@@ -1,0 +1,2 @@
+*.glb filter=lfs diff=lfs merge=lfs -text
+Galerie_d'Apollon_(Louvre).jpg filter=lfs diff=lfs merge=lfs -text

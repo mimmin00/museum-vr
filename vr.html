@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Louvre VR — Lost Treasures</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&family=Inter:wght@200;300;400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --gold: #b8976a;
+    --bg: #070707;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', 'Helvetica Neue', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: #fff;
+    font-family: var(--sans);
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+  }
+
+  canvas { display: block; }
+
+  /* ── Top Bar ── */
+  #top-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 28px 48px;
+    pointer-events: none;
+  }
+  #top-bar a, #top-bar span { pointer-events: auto; }
+  #back-link {
+    font-family: var(--sans);
+    font-size: 10px; font-weight: 300;
+    letter-spacing: 5px; text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    display: flex; align-items: center; gap: 14px;
+    transition: color 0.4s;
+  }
+  #back-link::before {
+    content: ''; display: block;
+    width: 28px; height: 1px;
+    background: rgba(255,255,255,0.2);
+    transition: width 0.4s, background 0.4s;
+  }
+  #back-link:hover { color: #fff; }
+  #back-link:hover::before { width: 40px; background: var(--gold); }
+  #top-logo {
+    font-family: var(--serif);
+    font-size: 14px; font-weight: 400;
+    letter-spacing: 14px; text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  /* ── VR Button ── */
+  #vr-button {
+    position: fixed;
+    bottom: 40px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    padding: 18px 56px;
+    background: rgba(184,151,106,0.08);
+    border: 1px solid rgba(184,151,106,0.5);
+    color: var(--gold);
+    font-family: var(--sans);
+    font-size: 11px; font-weight: 300;
+    letter-spacing: 6px; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+  }
+  #vr-button::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: -1;
+  }
+  #vr-button:hover::before { transform: scaleX(1); }
+  #vr-button:hover { color: #fff; border-color: var(--gold); }
+  #vr-button.unavailable {
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.2);
+    pointer-events: none;
+  }
+
+  /* ── Dummy Toggle Button ── */
+  #dummy-toggle {
+    position: fixed;
+    bottom: 40px; right: 48px;
+    z-index: 100;
+    padding: 14px 32px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.5);
+    font-family: var(--sans);
+    font-size: 10px; font-weight: 300;
+    letter-spacing: 5px; text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+  }
+  #dummy-toggle:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  #dummy-toggle.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(184,151,106,0.1);
+  }
+
+  /* ── Bottom hint ── */
+  #bottom-hint {
+    position: fixed;
+    bottom: 100px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    pointer-events: none;
+    text-align: center;
+    line-height: 2;
+  }
+
+  /* ── Loading ── */
+  #loading-overlay {
+    position: fixed; inset: 0;
+    z-index: 1000;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 1.2s ease;
+  }
+  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  #loading-overlay h2 {
+    font-family: var(--serif);
+    font-size: 18px; font-weight: 400;
+    letter-spacing: 16px; text-transform: uppercase;
+    color: var(--gold);
+    animation: pulse 2.5s ease-in-out infinite alternate;
+  }
+  .loader-bar {
+    width: 64px; height: 1px;
+    background: rgba(184,151,106,0.15);
+    position: relative; overflow: hidden;
+    margin-top: 32px;
+  }
+  .loader-bar::after {
+    content: ''; position: absolute; left: -60%;
+    width: 60%; height: 100%;
+    background: var(--gold);
+    animation: loading 2s ease-in-out infinite;
+  }
+  #load-progress {
+    margin-top: 20px; font-size: 10px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 4px; font-weight: 200;
+  }
+  @keyframes pulse { 0% { opacity: 0.3; } 100% { opacity: 1; } }
+  @keyframes loading { 0% { left: -60%; } 100% { left: 100%; } }
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <h2>Louvre</h2>
+  <div class="loader-bar"></div>
+  <div id="load-progress">0 / 4</div>
+</div>
+
+<div id="top-bar">
+  <a href="index.html" id="back-link">Exhibition</a>
+  <span id="top-logo">Louvre</span>
+  <span style="width:100px"></span>
+</div>
+
+<button id="vr-button">Enter VR</button>
+<button id="dummy-toggle">Try On</button>
+
+<div id="bottom-hint">
+  Click artifact to rotate &middot; Scroll to zoom &middot; R to reset
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Artifact Data — scale 줄임
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const artifacts = [
+  {
+    name: "Crown of Empress Eugénie",
+    file: "Meshy_AI_왕관_0404073506_texture.glb",
+    scale: 0.7,
+    rotationX: 0,
+    layFlat: false,
+    pedestalPos: new THREE.Vector3(-3, 0, -4),
+  },
+  {
+    name: "Emerald Teardrop Necklace",
+    file: "Meshy_AI_Emerald_Teardrop_Halo_0404084536_texture.glb",
+    scale: 0.7,
+    rotationX: Math.PI,
+    rotationZ: Math.PI,
+    layFlat: true,
+    pedestalPos: new THREE.Vector3(3, 0, -4),
+  },
+  {
+    name: "Sapphire Necklace & Earrings",
+    file: "Meshy_AI_Azure_Sapphire_Halo_N_0404093900_texture.glb",
+    scale: 0.7,
+    rotationX: -Math.PI / 2,
+    layFlat: true,
+    pedestalPos: new THREE.Vector3(-3, 0, -8),
+  },
+  {
+    name: "Earrings of Empress Eugénie",
+    file: "Meshy_AI_외제니_왕후의_귀_0404072330_texture.glb",
+    scale: 0.7,
+    rotationX: 0,
+    layFlat: false,
+    pedestalPos: new THREE.Vector3(3, 0, -8),
+  }
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Scene
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101010);
+scene.fog = new THREE.FogExp2(0x101010, 0.025);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 100);
+camera.position.set(0, 2.5, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.target.set(0, 1.2, -4);
+controls.minDistance = 1;
+controls.maxDistance = 15;
+controls.maxPolarAngle = Math.PI * 0.85;
+controls.update();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Lighting — 고급 박물관 조명
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+scene.add(new THREE.AmbientLight(0xfff8f0, 0.7));
+scene.add(new THREE.HemisphereLight(0xfff5e6, 0x1a1a2a, 0.7));
+
+// 메인 천장 조명들
+const ceilPositions = [[0, 6, -3], [0, 6, -6], [0, 6, -9]];
+ceilPositions.forEach(pos => {
+  const light = new THREE.PointLight(0xffeedd, 6, 20, 1.3);
+  light.position.set(...pos);
+  scene.add(light);
+});
+
+// 각 유물별 스팟라이트 (따뜻한 핀조명)
+artifacts.forEach(art => {
+  const spot = new THREE.SpotLight(0xfff0dd, 30, 10, Math.PI / 6, 0.5, 1.0);
+  spot.position.set(art.pedestalPos.x, 4.5, art.pedestalPos.z);
+  spot.target.position.set(art.pedestalPos.x, 1.4, art.pedestalPos.z);
+  spot.castShadow = true;
+  spot.shadow.mapSize.set(1024, 1024);
+  spot.shadow.bias = -0.001;
+  scene.add(spot);
+  scene.add(spot.target);
+});
+
+// 은은한 벽 워시 라이트
+const wallWash1 = new THREE.RectAreaLight(0xfff0dd, 0.8, 12, 4);
+wallWash1.position.set(0, 4, -12.9);
+wallWash1.lookAt(0, 2, -11);
+scene.add(wallWash1);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Museum Room — 고급 전시실
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const roomW = 16, roomH = 7, roomD = 20;
+const roomZ = -roomD / 2 + 3;
+
+// ── 바닥: 대리석 느낌 (어두운 반사)
+const floorMat = new THREE.MeshStandardMaterial({
+  color: 0x0d0d0d,
+  roughness: 0.08,
+  metalness: 0.15,
+  envMapIntensity: 0.5,
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.position.set(0, 0, roomZ);
+floor.receiveShadow = true;
+scene.add(floor);
+
+// 바닥 그리드 패턴 (대리석 줄눈)
+const gridMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 });
+for (let x = -roomW/2; x <= roomW/2; x += 2) {
+  const line = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.002, roomD), gridMat);
+  line.position.set(x, 0.001, roomZ);
+  scene.add(line);
+}
+for (let z = roomZ - roomD/2; z <= roomZ + roomD/2; z += 2) {
+  const line = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.002, 0.01), gridMat);
+  line.position.set(0, 0.001, z);
+  scene.add(line);
+}
+
+// ── 벽: 패널 느낌
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x121210, roughness: 0.85, metalness: 0.02 });
+const wallPanelMat = new THREE.MeshStandardMaterial({ color: 0x16150f, roughness: 0.7, metalness: 0.05 });
+
+// 뒷벽
+const backWall = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+backWall.position.set(0, roomH / 2, roomZ - roomD / 2);
+scene.add(backWall);
+
+// 뒷벽 거울 + 골드 프레임
+const mirrors = [];
+for (let i = -1; i <= 1; i++) {
+  // 거울 (Reflector)
+  const mirrorGeo = new THREE.PlaneGeometry(2.4, 4);
+  const mirror = new Reflector(mirrorGeo, {
+    clipBias: 0.003,
+    textureWidth: 1024,
+    textureHeight: 1024,
+    color: 0x889999,
+  });
+  mirror.position.set(i * 3.2, 3.2, roomZ - roomD / 2 + 0.02);
+  scene.add(mirror);
+  mirrors.push(mirror);
+
+  // 골드 프레임
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x8a7040, roughness: 0.3, metalness: 0.8 });
+  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), frameMat);
+  frameTop.position.set(i * 3.2, 5.23, roomZ - roomD / 2 + 0.03);
+  scene.add(frameTop);
+  const frameBot = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), frameMat);
+  frameBot.position.set(i * 3.2, 1.17, roomZ - roomD / 2 + 0.03);
+  scene.add(frameBot);
+  const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.18, 0.06), frameMat);
+  frameL.position.set(i * 3.2 - 1.27, 3.2, roomZ - roomD / 2 + 0.03);
+  scene.add(frameL);
+  const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.18, 0.06), frameMat);
+  frameR.position.set(i * 3.2 + 1.27, 3.2, roomZ - roomD / 2 + 0.03);
+  scene.add(frameR);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dummy Mannequin (더미 마네킹)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const dummy = new THREE.Group();
+const dummyMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.6, metalness: 0.1 });
+const dummySkinMat = new THREE.MeshStandardMaterial({ color: 0x3a3530, roughness: 0.7, metalness: 0.05 });
+
+// 몸통
+const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.7, 16), dummyMat);
+torso.position.y = -0.55;
+dummy.add(torso);
+
+// 어깨
+const shoulders = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.22), dummyMat);
+shoulders.position.y = -0.18;
+dummy.add(shoulders);
+
+// 목
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.15, 12), dummySkinMat);
+neck.position.y = -0.08;
+dummy.add(neck);
+
+// 머리
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), dummySkinMat);
+head.position.y = 0.07;
+dummy.add(head);
+
+// 머리 위 — 유물을 올릴 포인트 (보이지 않는 마커)
+const headTop = new THREE.Object3D();
+headTop.position.y = 0.22;
+dummy.add(headTop);
+dummy.userData.headTop = headTop;
+
+// 더미 초기 위치 (거울 앞)
+dummy.position.set(0, 1.5, -5);
+scene.add(dummy);
+
+// 머리에 올려진 유물 추적
+let headArtifact = null;
+
+// 더미 기본 숨김
+let dummyVisible = false;
+dummy.visible = false;
+
+// 토글 버튼
+const dummyToggle = document.getElementById('dummy-toggle');
+dummyToggle.addEventListener('click', () => {
+  dummyVisible = !dummyVisible;
+  dummy.visible = dummyVisible;
+  dummyToggle.classList.toggle('active', dummyVisible);
+  dummyToggle.textContent = dummyVisible ? 'Hide Dummy' : 'Try On';
+
+  // 끌 때 머리 위 유물 해제
+  if (!dummyVisible && headArtifact) {
+    headArtifact.position.copy(headArtifact.userData.originPos);
+    headArtifact.rotation.set(0, 0, 0);
+    headArtifact.userData.onHead = false;
+    const idx = headArtifact.userData.index;
+    if (headArtifact.children[0]) headArtifact.children[0].scale.setScalar(artifacts[idx].scale);
+    headArtifact = null;
+  }
+});
+
+// 좌우 벽
+const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), wallMat);
+leftWall.rotation.y = Math.PI / 2;
+leftWall.position.set(-roomW / 2, roomH / 2, roomZ);
+scene.add(leftWall);
+
+const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), wallMat);
+rightWall.rotation.y = -Math.PI / 2;
+rightWall.position.set(roomW / 2, roomH / 2, roomZ);
+scene.add(rightWall);
+
+// 천장
+const ceilMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.95 });
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), ceilMat);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(0, roomH, roomZ);
+scene.add(ceil);
+
+// ── 골드 몰딩 (바닥 + 천장 라인)
+const moldMat = new THREE.MeshStandardMaterial({ color: 0x9a7d4a, roughness: 0.25, metalness: 0.8 });
+
+// 바닥 몰딩
+[
+  [roomW, 0.06, 0.06, 0, 0.03, roomZ - roomD/2 + 0.03, 0],
+  [0.06, 0.06, roomD, -roomW/2 + 0.03, 0.03, roomZ, 0],
+  [0.06, 0.06, roomD, roomW/2 - 0.03, 0.03, roomZ, 0],
+].forEach(([w,h,d, x,y,z]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), moldMat);
+  m.position.set(x,y,z);
+  scene.add(m);
+});
+
+// 천장 몰딩
+[
+  [roomW, 0.04, 0.04, 0, roomH - 0.02, roomZ - roomD/2 + 0.02, 0],
+  [0.04, 0.04, roomD, -roomW/2 + 0.02, roomH - 0.02, roomZ, 0],
+  [0.04, 0.04, roomD, roomW/2 - 0.02, roomH - 0.02, roomZ, 0],
+].forEach(([w,h,d, x,y,z]) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), moldMat);
+  m.position.set(x,y,z);
+  scene.add(m);
+});
+
+// ── 천장 조명 기구 (장식)
+ceilPositions.forEach(pos => {
+  // 원형 베이스
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.4, 0.4, 0.03, 32),
+    moldMat
+  );
+  base.position.set(pos[0], roomH - 0.02, pos[2]);
+  scene.add(base);
+
+  // 링
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(0.35, 0.015, 8, 32),
+    moldMat
+  );
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(pos[0], roomH - 0.04, pos[2]);
+  scene.add(ring);
+});
+
+// ── 바닥 센터 장식 러그/패턴
+const rugMat = new THREE.MeshStandardMaterial({ color: 0x0f0e0a, roughness: 0.4, metalness: 0.05 });
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(8, 12), rugMat);
+rug.rotation.x = -Math.PI / 2;
+rug.position.set(0, 0.003, -6 + 3);
+scene.add(rug);
+
+// 러그 골드 테두리
+const rugBorderMat = new THREE.MeshStandardMaterial({ color: 0x6a5530, roughness: 0.4, metalness: 0.6 });
+[
+  [8.1, 0.003, 0.04, 0, 0.004, -6+3-6],
+  [8.1, 0.003, 0.04, 0, 0.004, -6+3+6],
+  [0.04, 0.003, 12.1, -4.05, 0.004, -6+3],
+  [0.04, 0.003, 12.1, 4.05, 0.004, -6+3],
+].forEach(([w,h,d,x,y,z]) => {
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(w,h,d), rugBorderMat).translateX(x).translateY(y).translateZ(z));
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Pedestals — 크고 고급스럽게
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const pedH = 1.15;
+const pedR = 0.5;  // 받침대 반지름 키움
+
+const pedBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1916, roughness: 0.3, metalness: 0.15 });
+const pedTopMat = new THREE.MeshStandardMaterial({ color: 0x1c1b18, roughness: 0.1, metalness: 0.25 });
+const pedGoldMat = new THREE.MeshStandardMaterial({ color: 0x9a7d4a, roughness: 0.2, metalness: 0.85 });
+
+artifacts.forEach(art => {
+  const g = new THREE.Group();
+  g.position.copy(art.pedestalPos);
+
+  // 하단 베이스 (넓은 사각)
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 2.6, 0.08, pedR * 2.6),
+    pedBodyMat
+  );
+  base.position.y = 0.04;
+  base.castShadow = true;
+  base.receiveShadow = true;
+  g.add(base);
+
+  // 베이스 골드 테두리
+  const baseRim = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 2.7, 0.015, pedR * 2.7),
+    pedGoldMat
+  );
+  baseRim.position.y = 0.085;
+  g.add(baseRim);
+
+  // 기둥 (사각형으로 변경 — 더 고급스러움)
+  const pillar = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 1.8, pedH - 0.15, pedR * 1.8),
+    pedBodyMat
+  );
+  pillar.position.y = pedH / 2 + 0.02;
+  pillar.castShadow = true;
+  pillar.receiveShadow = true;
+  g.add(pillar);
+
+  // 상단 탑 플레이트
+  const topPlate = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 2.4, 0.06, pedR * 2.4),
+    pedTopMat
+  );
+  topPlate.position.y = pedH + 0.03;
+  topPlate.receiveShadow = true;
+  g.add(topPlate);
+
+  // 상단 골드 테두리
+  const topRim = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 2.5, 0.015, pedR * 2.5),
+    pedGoldMat
+  );
+  topRim.position.y = pedH + 0.065;
+  g.add(topRim);
+
+  // 중간 골드 라인
+  const midRing = new THREE.Mesh(
+    new THREE.BoxGeometry(pedR * 1.9, 0.015, pedR * 1.9),
+    pedGoldMat
+  );
+  midRing.position.y = pedH * 0.5;
+  g.add(midRing);
+
+  // 네임 플레이트 (앞면)
+  const plateGeo = new THREE.BoxGeometry(0.8, 0.12, 0.02);
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0x0e0d0a, roughness: 0.3, metalness: 0.2 });
+  const plate = new THREE.Mesh(plateGeo, plateMat);
+  plate.position.set(0, pedH * 0.3, pedR * 0.92);
+  g.add(plate);
+
+  // 플레이트 골드 테두리
+  const plateBorder = new THREE.Mesh(
+    new THREE.BoxGeometry(0.84, 0.14, 0.01),
+    pedGoldMat
+  );
+  plateBorder.position.set(0, pedH * 0.3, pedR * 0.92 + 0.011);
+  g.add(plateBorder);
+
+  // 플레이트 텍스트
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.font = '300 18px Helvetica Neue, sans-serif';
+  ctx.fillStyle = 'rgba(184,151,106,0.9)';
+  ctx.textAlign = 'center';
+  ctx.fillText(art.name, 256, 40);
+  const labelTex = new THREE.CanvasTexture(c);
+  const label = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.76, 0.095),
+    new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, depthWrite: false })
+  );
+  label.position.set(0, pedH * 0.3, pedR * 0.92 + 0.021);
+  g.add(label);
+
+  scene.add(g);
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Load Artifacts (GLB)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const loader = new GLTFLoader();
+const artifactGroups = [];
+let loadedCount = 0;
+
+artifacts.forEach((art, i) => {
+  loader.load(
+    art.file,
+    (gltf) => {
+      const model = gltf.scene;
+      model.scale.setScalar(art.scale);
+
+      // 먼저 회전 적용 (layFlat은 눕히기 위해 회전이 먼저)
+      model.rotation.x = art.rotationX || 0;
+      model.rotation.z = art.rotationZ || 0;
+
+      // 회전 후 바운딩박스 계산해서 센터링
+      model.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      // 센터링: XZ는 가운데, Y는 바닥 기준
+      if (art.layFlat) {
+        // 바닥에 눕히기: Y 최소값을 0으로 맞춤
+        model.position.set(-center.x, -box.min.y, -center.z);
+      } else {
+        model.position.sub(center);
+      }
+
+      model.traverse(ch => {
+        if (ch.isMesh) { ch.castShadow = true; ch.receiveShadow = true; }
+      });
+
+      const wrapper = new THREE.Group();
+      wrapper.add(model);
+      // layFlat: 받침대 표면 바로 위 / 일반: 유리 케이스 중앙
+      const artY = art.layFlat
+        ? pedH + 0.08   // 받침대 표면 바로 위
+        : pedH + 0.06 + 0.6;
+      wrapper.position.set(art.pedestalPos.x, artY, art.pedestalPos.z);
+      wrapper.userData = {
+        isArtifact: true,
+        index: i,
+        name: art.name,
+        originPos: new THREE.Vector3(art.pedestalPos.x, artY, art.pedestalPos.z),
+        grabbed: false,
+      };
+      scene.add(wrapper);
+      artifactGroups.push(wrapper);
+
+      loadedCount++;
+      document.getElementById('load-progress').textContent = `${loadedCount} / ${artifacts.length}`;
+      if (loadedCount === artifacts.length) {
+        setTimeout(() => document.getElementById('loading-overlay').classList.add('hidden'), 500);
+      }
+    },
+    (xhr) => {
+      if (xhr.total > 0) {
+        const pct = Math.round(xhr.loaded / xhr.total * 100);
+        document.getElementById('load-progress').textContent = `Loading... ${pct}%`;
+      }
+    },
+    (err) => {
+      console.error('GLB error:', art.file, err);
+      loadedCount++;
+      if (loadedCount === artifacts.length) {
+        document.getElementById('loading-overlay').classList.add('hidden');
+      }
+    }
+  );
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WebXR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const vrButton = document.getElementById('vr-button');
+
+if ('xr' in navigator) {
+  navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+    if (supported) {
+      vrButton.addEventListener('click', async () => {
+        try {
+          const session = await navigator.xr.requestSession('immersive-vr', {
+            optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+          });
+          renderer.xr.setReferenceSpaceType('local-floor');
+          renderer.xr.setSession(session);
+          vrButton.style.display = 'none';
+          document.getElementById('top-bar').style.display = 'none';
+          document.getElementById('bottom-hint').style.display = 'none';
+          session.addEventListener('end', () => {
+            vrButton.style.display = '';
+            document.getElementById('top-bar').style.display = '';
+            document.getElementById('bottom-hint').style.display = '';
+          });
+        } catch (e) { console.error('VR error:', e); }
+      });
+    } else {
+      vrButton.textContent = 'VR Not Available';
+      vrButton.classList.add('unavailable');
+    }
+  });
+} else {
+  vrButton.textContent = 'WebXR Not Supported';
+  vrButton.classList.add('unavailable');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// XR Controllers + Grab
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const controllerModelFactory = new XRControllerModelFactory();
+const raycaster = new THREE.Raycaster();
+const tempMatrix = new THREE.Matrix4();
+
+function makeRay() {
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -5)
+  ]);
+  return new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xb8976a, transparent: true, opacity: 0.35 }));
+}
+
+const xrControllers = [0, 1].map(i => {
+  const ctrl = renderer.xr.getController(i);
+  ctrl.add(makeRay());
+  scene.add(ctrl);
+  const grip = renderer.xr.getControllerGrip(i);
+  grip.add(controllerModelFactory.createControllerModel(grip));
+  scene.add(grip);
+  return { ctrl, grip, grabbed: null, offset: new THREE.Matrix4() };
+});
+
+function findHitArtifact(controller) {
+  tempMatrix.identity().extractRotation(controller.matrixWorld);
+  raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+  raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+  const meshes = [];
+  artifactGroups.forEach(g => {
+    g.traverse(ch => { if (ch.isMesh) { ch.userData._artGroup = g; meshes.push(ch); } });
+  });
+  const hits = raycaster.intersectObjects(meshes, false);
+  return hits.length > 0 ? hits[0].object.userData._artGroup : null;
+}
+
+function onGrab(event) {
+  const ctrl = event.target;
+  const ci = xrControllers.findIndex(c => c.ctrl === ctrl);
+  if (ci === -1) return;
+  const art = findHitArtifact(ctrl);
+  if (art && !art.userData.grabbed) {
+    xrControllers[ci].grabbed = art;
+    art.userData.grabbed = true;
+    const inv = new THREE.Matrix4().copy(ctrl.matrixWorld).invert();
+    xrControllers[ci].offset.copy(inv).multiply(art.matrixWorld);
+    try {
+      const src = renderer.xr.getSession()?.inputSources?.[ci];
+      src?.gamepad?.hapticActuators?.[0]?.pulse(0.5, 80);
+    } catch(e) {}
+  }
+}
+
+function onRelease(event) {
+  const ctrl = event.target;
+  const ci = xrControllers.findIndex(c => c.ctrl === ctrl);
+  if (ci === -1) return;
+  const art = xrControllers[ci].grabbed;
+  if (art) {
+    art.userData.grabbed = false;
+    xrControllers[ci].grabbed = null;
+
+    // 더미가 켜져 있을 때만 머리에 올리기 가능
+    if (!dummyVisible) return;
+    const headWorldPos = new THREE.Vector3();
+    dummy.userData.headTop.getWorldPosition(headWorldPos);
+    const artPos = art.position.clone();
+    const dist = artPos.distanceTo(headWorldPos);
+
+    if (dist < 0.6) {
+      // 이전에 올려놓은 유물이 있으면 원래 위치로
+      if (headArtifact && headArtifact !== art) {
+        const idx = headArtifact.userData.index;
+        headArtifact.position.copy(headArtifact.userData.originPos);
+        headArtifact.rotation.set(0, 0, 0);
+        if (headArtifact.children[0]) headArtifact.children[0].scale.setScalar(artifacts[idx].scale);
+        headArtifact.userData.onHead = false;
+      }
+      // 머리 위에 올리기
+      art.userData.onHead = true;
+      headArtifact = art;
+    }
+  }
+}
+
+xrControllers.forEach(c => {
+  c.ctrl.addEventListener('selectstart', onGrab);
+  c.ctrl.addEventListener('selectend', onRelease);
+  c.ctrl.addEventListener('squeezestart', onGrab);
+  c.ctrl.addEventListener('squeezeend', onRelease);
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Desktop: Click + Drag to rotate
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const mouse = new THREE.Vector2();
+const dRay = new THREE.Raycaster();
+let dGrabbed = null;
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  dRay.setFromCamera(mouse, camera);
+  const meshes = [];
+  artifactGroups.forEach(g => {
+    g.traverse(ch => { if (ch.isMesh) { ch.userData._artGroup = g; meshes.push(ch); } });
+  });
+  const hits = dRay.intersectObjects(meshes, false);
+  if (hits.length > 0) {
+    dGrabbed = hits[0].object.userData._artGroup;
+    controls.enabled = false;
+  }
+});
+
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!dGrabbed) return;
+  dGrabbed.rotation.y += e.movementX * 0.008;
+  dGrabbed.rotation.x += e.movementY * 0.008;
+});
+
+renderer.domElement.addEventListener('pointerup', () => {
+  if (dGrabbed) {
+    // 데스크톱: 더미가 켜져 있을 때만 머리에 올리기
+    if (dummyVisible) {
+    const headWorldPos = new THREE.Vector3();
+    dummy.userData.headTop.getWorldPosition(headWorldPos);
+    const artPos = dGrabbed.position.clone();
+    if (artPos.distanceTo(headWorldPos) < 1.0) {
+      if (headArtifact && headArtifact !== dGrabbed) {
+        headArtifact.position.copy(headArtifact.userData.originPos);
+        headArtifact.rotation.set(0, 0, 0);
+        headArtifact.userData.onHead = false;
+      }
+      dGrabbed.userData.onHead = true;
+      headArtifact = dGrabbed;
+    }
+    } // dummyVisible 닫기
+    dGrabbed = null;
+    controls.enabled = true;
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'r' || e.key === 'R') {
+    artifactGroups.forEach((g, i) => {
+      g.position.copy(g.userData.originPos);
+      g.rotation.set(0, 0, 0);
+      g.userData.onHead = false;
+      if (g.children[0]) g.children[0].scale.setScalar(artifacts[i].scale);
+    });
+    headArtifact = null;
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Hover highlight
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const origEmissives = new Map();
+let hovered = null;
+
+function setHighlight(artGroup, on) {
+  artGroup.traverse(ch => {
+    if (!ch.isMesh) return;
+    const mats = Array.isArray(ch.material) ? ch.material : [ch.material];
+    mats.forEach(m => {
+      if (!m.emissive) return;
+      if (on) {
+        if (!origEmissives.has(m)) origEmissives.set(m, m.emissive.clone());
+        m.emissive.set(0x2a1f0a);
+      } else {
+        const orig = origEmissives.get(m);
+        if (orig) m.emissive.copy(orig);
+      }
+    });
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Resize
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Render Loop
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+renderer.setAnimationLoop(() => {
+  // VR grab follow + thumbstick 확대/축소
+  const session = renderer.xr.getSession();
+  xrControllers.forEach((state, ci) => {
+    if (state.grabbed) {
+      const m = new THREE.Matrix4().copy(state.ctrl.matrixWorld).multiply(state.offset);
+      state.grabbed.position.setFromMatrixPosition(m);
+      state.grabbed.rotation.setFromRotationMatrix(m);
+
+      // 조이스틱 Y축으로 확대/축소 (위로 밀면 확대, 아래로 축소)
+      if (session && session.inputSources) {
+        for (const src of session.inputSources) {
+          if (src.gamepad && src.gamepad.axes.length >= 4) {
+            const thumbY = src.gamepad.axes[3]; // Y축 (위: -1, 아래: +1)
+            if (Math.abs(thumbY) > 0.15) { // 데드존
+              const scaleSpeed = 1 - thumbY * 0.02;
+              const model = state.grabbed.children[0];
+              if (model) {
+                const newScale = model.scale.x * scaleSpeed;
+                // 최소 0.2 ~ 최대 3배
+                if (newScale >= 0.2 && newScale <= 3.0) {
+                  model.scale.setScalar(newScale);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // VR hover
+  if (renderer.xr.isPresenting) {
+    let newHov = null;
+    xrControllers.forEach(c => {
+      const hit = findHitArtifact(c.ctrl);
+      if (hit && !hit.userData.grabbed) newHov = hit;
+    });
+    if (newHov !== hovered) {
+      if (hovered) setHighlight(hovered, false);
+      hovered = newHov;
+      if (hovered) setHighlight(hovered, true);
+    }
+  }
+
+  // 더미 마네킹: 카메라 앞 거울 쪽에 위치 (거울을 바라봄)
+  if (renderer.xr.isPresenting) {
+    const camPos = new THREE.Vector3();
+    const camDir = new THREE.Vector3();
+    camera.getWorldPosition(camPos);
+    camera.getWorldDirection(camDir);
+
+    // 더미를 카메라 앞 1.5m에 배치
+    dummy.position.set(
+      camPos.x + camDir.x * 1.5,
+      camPos.y - 0.3,
+      camPos.z + camDir.z * 1.5
+    );
+    // 카메라를 바라보게 (거울에 반사돼 보임)
+    dummy.lookAt(camPos.x, dummy.position.y, camPos.z);
+    dummy.rotation.y += Math.PI; // 등을 카메라에게
+  } else {
+    // 데스크톱: 거울 앞 고정
+    dummy.position.set(0, 1.5, -6);
+    dummy.rotation.y = 0;
+  }
+
+  // 머리 위 유물 따라가기
+  if (headArtifact && headArtifact.userData.onHead && !headArtifact.userData.grabbed) {
+    const headWorldPos = new THREE.Vector3();
+    dummy.userData.headTop.getWorldPosition(headWorldPos);
+    headArtifact.position.copy(headWorldPos);
+    headArtifact.rotation.y = dummy.rotation.y;
+  }
+
+  // Auto-rotate (머리 위 유물은 제외)
+  artifactGroups.forEach(g => {
+    if (!g.userData.grabbed && g !== dGrabbed && !g.userData.onHead) {
+      g.rotation.y += 0.002;
+    }
+  });
+
+  if (!renderer.xr.isPresenting) controls.update();
+  renderer.render(scene, camera);
+});
+
+</script>
+</body>
+</html>
