@@ -252,8 +252,8 @@ const artifacts = [
 // Scene
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x101010);
-scene.fog = new THREE.FogExp2(0x101010, 0.025);
+scene.background = new THREE.Color(0x2a2418);
+scene.fog = new THREE.FogExp2(0x2a2418, 0.015);
 
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.05, 100);
 camera.position.set(0, 2.5, 5);
@@ -280,8 +280,8 @@ controls.update();
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Lighting — 고급 박물관 조명
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-scene.add(new THREE.AmbientLight(0xfff8f0, 0.7));
-scene.add(new THREE.HemisphereLight(0xfff5e6, 0x1a1a2a, 0.7));
+scene.add(new THREE.AmbientLight(0xfff8f0, 1.2));
+scene.add(new THREE.HemisphereLight(0xfff5e6, 0x4a3a2a, 1.0));
 
 // 메인 천장 조명들
 const ceilPositions = [[0, 6, -3], [0, 6, -6], [0, 6, -9]];
@@ -310,50 +310,257 @@ wallWash1.lookAt(0, 2, -11);
 scene.add(wallWash1);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Museum Room — 고급 전시실
+// Museum Room — 갤러리 다폴롱 스타일 전시실
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const roomW = 16, roomH = 7, roomD = 20;
 const roomZ = -roomD / 2 + 3;
 
-// ── 바닥: 대리석 느낌 (어두운 반사)
-const floorMat = new THREE.MeshStandardMaterial({
-  color: 0x0d0d0d,
-  roughness: 0.08,
-  metalness: 0.15,
-  envMapIntensity: 0.5,
-});
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), floorMat);
+// ── 공통 재질들
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xc9a84c, roughness: 0.2, metalness: 0.85 });
+const goldDarkMat = new THREE.MeshStandardMaterial({ color: 0x8a6d2f, roughness: 0.3, metalness: 0.8 });
+const goldLightMat = new THREE.MeshStandardMaterial({ color: 0xdabb6e, roughness: 0.25, metalness: 0.75 });
+const creamMat = new THREE.MeshStandardMaterial({ color: 0xf5edd6, roughness: 0.6, metalness: 0.02 });
+const warmWhiteMat = new THREE.MeshStandardMaterial({ color: 0xe8dfc8, roughness: 0.7, metalness: 0.01 });
+const marbleLightMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d5, roughness: 0.15, metalness: 0.05 });
+const marbleDarkMat = new THREE.MeshStandardMaterial({ color: 0x3a342a, roughness: 0.2, metalness: 0.08 });
+const wallBaseMat = new THREE.MeshStandardMaterial({ color: 0xebe2cc, roughness: 0.65, metalness: 0.02 });
+const panelMat = new THREE.MeshStandardMaterial({ color: 0xd4c8a8, roughness: 0.55, metalness: 0.03 });
+const darkPanelMat = new THREE.MeshStandardMaterial({ color: 0x2a2418, roughness: 0.4, metalness: 0.1 });
+
+// ── 바닥: 밝은 대리석 + 체커 패턴
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), marbleLightMat);
 floor.rotation.x = -Math.PI / 2;
 floor.position.set(0, 0, roomZ);
 floor.receiveShadow = true;
 scene.add(floor);
 
-// 바닥 그리드 패턴 (대리석 줄눈)
-const gridMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5 });
-for (let x = -roomW/2; x <= roomW/2; x += 2) {
-  const line = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.002, roomD), gridMat);
-  line.position.set(x, 0.001, roomZ);
+// 바닥 대리석 체커 패턴
+const tileSize = 2;
+for (let x = -roomW/2; x < roomW/2; x += tileSize) {
+  for (let z = roomZ - roomD/2; z < roomZ + roomD/2; z += tileSize) {
+    const ix = Math.floor((x + roomW/2) / tileSize);
+    const iz = Math.floor((z - roomZ + roomD/2) / tileSize);
+    if ((ix + iz) % 2 === 0) {
+      const tile = new THREE.Mesh(
+        new THREE.PlaneGeometry(tileSize * 0.95, tileSize * 0.95),
+        marbleDarkMat
+      );
+      tile.rotation.x = -Math.PI / 2;
+      tile.position.set(x + tileSize/2, 0.002, z + tileSize/2);
+      scene.add(tile);
+    }
+  }
+}
+
+// 바닥 줄눈 라인
+const groutMat = new THREE.MeshStandardMaterial({ color: 0x9a927e, roughness: 0.7 });
+for (let x = -roomW/2; x <= roomW/2; x += tileSize) {
+  const line = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.003, roomD), groutMat);
+  line.position.set(x, 0.003, roomZ);
   scene.add(line);
 }
-for (let z = roomZ - roomD/2; z <= roomZ + roomD/2; z += 2) {
-  const line = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.002, 0.01), gridMat);
-  line.position.set(0, 0.001, z);
+for (let z = roomZ - roomD/2; z <= roomZ + roomD/2; z += tileSize) {
+  const line = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.003, 0.02), groutMat);
+  line.position.set(0, 0.003, z);
   scene.add(line);
 }
 
-// ── 벽: 패널 느낌
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x121210, roughness: 0.85, metalness: 0.02 });
-const wallPanelMat = new THREE.MeshStandardMaterial({ color: 0x16150f, roughness: 0.7, metalness: 0.05 });
 
-// 뒷벽
-const backWall = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallMat);
+// ── 벽 함수: 한쪽 벽 전체를 만드는 함수
+function buildWall(side) {
+  const wallGroup = new THREE.Group();
+  const xSign = side === 'left' ? -1 : 1;
+  const xPos = xSign * roomW / 2;
+  const rotY = side === 'left' ? Math.PI / 2 : -Math.PI / 2;
+
+  // 벽 베이스
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), wallBaseMat);
+  wall.rotation.y = rotY;
+  wall.position.set(xPos, roomH / 2, roomZ);
+  wallGroup.add(wall);
+
+  // 하단 웨인스코팅 (나무 패널 느낌)
+  const wainscotH = 1.2;
+  const wainscot = new THREE.Mesh(
+    new THREE.PlaneGeometry(roomD, wainscotH),
+    panelMat
+  );
+  wainscot.rotation.y = rotY;
+  wainscot.position.set(xPos + xSign * (-0.01), wainscotH / 2, roomZ);
+  wallGroup.add(wainscot);
+
+  // 필라스터 (기둥 장식) — 벽을 따라 등간격
+  const pilasterSpacing = 3.2;
+  const numPilasters = Math.floor(roomD / pilasterSpacing) + 1;
+  for (let i = 0; i < numPilasters; i++) {
+    const pz = roomZ - roomD / 2 + i * pilasterSpacing;
+    const pg = new THREE.Group();
+
+    // 기둥 몸체
+    const pilBody = new THREE.Mesh(
+      new THREE.BoxGeometry(0.25, roomH - 0.5, 0.12),
+      creamMat
+    );
+    pilBody.position.set(xPos + xSign * (-0.06), roomH / 2, pz);
+    pg.add(pilBody);
+
+    // 기둥 세로 홈 (플루팅)
+    for (let f = -1; f <= 1; f++) {
+      const flute = new THREE.Mesh(
+        new THREE.BoxGeometry(0.02, roomH - 1.0, 0.13),
+        warmWhiteMat
+      );
+      flute.position.set(xPos + xSign * (-0.06) + f * 0.06, roomH / 2, pz);
+      pg.add(flute);
+    }
+
+    // 기둥 상단 캐피탈 (코린트식 장식)
+    const capital = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.25, 0.2),
+      goldMat
+    );
+    capital.position.set(xPos + xSign * (-0.06), roomH - 0.38, pz);
+    pg.add(capital);
+
+    // 캐피탈 장식 — 볼류트 (소용돌이)
+    const volute1 = new THREE.Mesh(
+      new THREE.TorusGeometry(0.06, 0.015, 8, 16, Math.PI),
+      goldLightMat
+    );
+    volute1.position.set(xPos + xSign * (-0.06) - 0.12, roomH - 0.28, pz);
+    volute1.rotation.z = Math.PI / 2;
+    pg.add(volute1);
+    const volute2 = volute1.clone();
+    volute2.position.x = xPos + xSign * (-0.06) + 0.12;
+    pg.add(volute2);
+
+    // 기둥 하단 베이스
+    const pBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.15, 0.18),
+      creamMat
+    );
+    pBase.position.set(xPos + xSign * (-0.06), 0.075, pz);
+    pg.add(pBase);
+    const pBaseGold = new THREE.Mesh(
+      new THREE.BoxGeometry(0.38, 0.03, 0.2),
+      goldDarkMat
+    );
+    pBaseGold.position.set(xPos + xSign * (-0.06), 0.16, pz);
+    pg.add(pBaseGold);
+
+    wallGroup.add(pg);
+  }
+
+  // 벽 패널 (필라스터 사이)
+  for (let i = 0; i < numPilasters - 1; i++) {
+    const pz = roomZ - roomD / 2 + i * pilasterSpacing + pilasterSpacing / 2;
+
+    // 상단 패널 (그림 프레임 느낌)
+    const upperPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(pilasterSpacing * 0.65, 2.5),
+      darkPanelMat
+    );
+    upperPanel.rotation.y = rotY;
+    upperPanel.position.set(xPos + xSign * (-0.015), 4.5, pz);
+    wallGroup.add(upperPanel);
+
+    // 상단 패널 골드 프레임
+    const frameW = pilasterSpacing * 0.7;
+    const frameH = 2.7;
+    const fb = 0.05;
+    [[frameW, fb, 0, frameH/2 - fb/2], [frameW, fb, 0, -frameH/2 + fb/2],
+     [fb, frameH, -frameW/2 + fb/2, 0], [fb, frameH, frameW/2 - fb/2, 0]].forEach(([w,h,ox,oy]) => {
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), goldMat);
+      fr.rotation.y = rotY;
+      fr.position.set(xPos + xSign * (-0.02), 4.5 + oy, pz + (side === 'left' ? -ox : ox));
+      wallGroup.add(fr);
+    });
+
+    // 하단 패널 (웨인스코팅 내부)
+    const lowerPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(pilasterSpacing * 0.6, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0xc8bb9a, roughness: 0.5, metalness: 0.03 })
+    );
+    lowerPanel.rotation.y = rotY;
+    lowerPanel.position.set(xPos + xSign * (-0.015), 0.6, pz);
+    wallGroup.add(lowerPanel);
+
+    // 하단 패널 얇은 골드 프레임
+    const lfW = pilasterSpacing * 0.65;
+    const lfH = 0.8;
+    const lfb = 0.025;
+    [[lfW, lfb, 0, lfH/2], [lfW, lfb, 0, -lfH/2],
+     [lfb, lfH, -lfW/2, 0], [lfb, lfH, lfW/2, 0]].forEach(([w,h,ox,oy]) => {
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), goldDarkMat);
+      fr.rotation.y = rotY;
+      fr.position.set(xPos + xSign * (-0.018), 0.6 + oy, pz + (side === 'left' ? -ox : ox));
+      wallGroup.add(fr);
+    });
+
+    // 중간 수평 몰딩 (웨인스코팅 상단)
+    const midMold = new THREE.Mesh(
+      new THREE.BoxGeometry(pilasterSpacing, 0.06, 0.04),
+      goldMat
+    );
+    midMold.rotation.y = rotY;
+    midMold.position.set(xPos + xSign * (-0.02), wainscotH + 0.03, pz);
+    wallGroup.add(midMold);
+  }
+
+  // 벽 상단 코니스 (장식 처마)
+  const cornice = new THREE.Mesh(
+    new THREE.BoxGeometry(roomD, 0.12, 0.15),
+    goldMat
+  );
+  cornice.rotation.y = rotY;
+  cornice.position.set(xPos + xSign * (-0.07), roomH - 0.06, roomZ);
+  wallGroup.add(cornice);
+
+  // 코니스 아래 덴틸 몰딩 (톱니 장식)
+  for (let d = 0; d < roomD / 0.2; d++) {
+    const dz = roomZ - roomD / 2 + d * 0.2 + 0.1;
+    if (d % 2 === 0) {
+      const dentil = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.08, 0.04),
+        goldLightMat
+      );
+      dentil.rotation.y = rotY;
+      dentil.position.set(xPos + xSign * (-0.05), roomH - 0.18, dz);
+      wallGroup.add(dentil);
+    }
+  }
+
+  // 벽 하단 베이스보드
+  const baseboard = new THREE.Mesh(
+    new THREE.BoxGeometry(roomD, 0.12, 0.06),
+    goldDarkMat
+  );
+  baseboard.rotation.y = rotY;
+  baseboard.position.set(xPos + xSign * (-0.03), 0.06, roomZ);
+  wallGroup.add(baseboard);
+
+  scene.add(wallGroup);
+}
+
+buildWall('left');
+buildWall('right');
+
+// ── 뒷벽
+const backWall = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomH), wallBaseMat);
 backWall.position.set(0, roomH / 2, roomZ - roomD / 2);
 scene.add(backWall);
 
-// 뒷벽 거울 + 골드 프레임
+// 뒷벽 웨인스코팅
+const bWainscot = new THREE.Mesh(
+  new THREE.PlaneGeometry(roomW, 1.2),
+  panelMat
+);
+bWainscot.position.set(0, 0.6, roomZ - roomD / 2 + 0.01);
+scene.add(bWainscot);
+
+// 뒷벽 거울 + 화려한 골드 프레임
 const mirrors = [];
 for (let i = -1; i <= 1; i++) {
-  // 거울 (Reflector)
   const mirrorGeo = new THREE.PlaneGeometry(2.4, 4);
   const mirror = new Reflector(mirrorGeo, {
     clipBias: 0.003,
@@ -365,21 +572,217 @@ for (let i = -1; i <= 1; i++) {
   scene.add(mirror);
   mirrors.push(mirror);
 
-  // 골드 프레임
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x8a7040, roughness: 0.3, metalness: 0.8 });
-  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), frameMat);
-  frameTop.position.set(i * 3.2, 5.23, roomZ - roomD / 2 + 0.03);
+  // 화려한 골드 프레임
+  const fMat = goldMat;
+  const fW = 2.6, fH = 4.2, fT = 0.1;
+  // 프레임 4면
+  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(fW + fT*2, fT, 0.08), fMat);
+  frameTop.position.set(i * 3.2, 5.32, roomZ - roomD / 2 + 0.03);
   scene.add(frameTop);
-  const frameBot = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), frameMat);
-  frameBot.position.set(i * 3.2, 1.17, roomZ - roomD / 2 + 0.03);
+  const frameBot = new THREE.Mesh(new THREE.BoxGeometry(fW + fT*2, fT, 0.08), fMat);
+  frameBot.position.set(i * 3.2, 1.08, roomZ - roomD / 2 + 0.03);
   scene.add(frameBot);
-  const frameL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.18, 0.06), frameMat);
-  frameL.position.set(i * 3.2 - 1.27, 3.2, roomZ - roomD / 2 + 0.03);
+  const frameL = new THREE.Mesh(new THREE.BoxGeometry(fT, fH, 0.08), fMat);
+  frameL.position.set(i * 3.2 - fW/2 - fT/2, 3.2, roomZ - roomD / 2 + 0.03);
   scene.add(frameL);
-  const frameR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.18, 0.06), frameMat);
-  frameR.position.set(i * 3.2 + 1.27, 3.2, roomZ - roomD / 2 + 0.03);
+  const frameR = new THREE.Mesh(new THREE.BoxGeometry(fT, fH, 0.08), fMat);
+  frameR.position.set(i * 3.2 + fW/2 + fT/2, 3.2, roomZ - roomD / 2 + 0.03);
   scene.add(frameR);
+
+  // 프레임 상단 장식 (아치형)
+  const archDeco = new THREE.Mesh(
+    new THREE.TorusGeometry(0.5, 0.04, 8, 16, Math.PI),
+    goldLightMat
+  );
+  archDeco.position.set(i * 3.2, 5.45, roomZ - roomD / 2 + 0.04);
+  scene.add(archDeco);
+
+  // 프레임 코너 장식
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([cx,cy]) => {
+    const corner = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 12, 12),
+      goldLightMat
+    );
+    corner.position.set(
+      i * 3.2 + cx * (fW/2 + fT/2),
+      3.2 + cy * (fH/2 + fT/2),
+      roomZ - roomD / 2 + 0.05
+    );
+    scene.add(corner);
+  });
 }
+
+// 뒷벽 코니스
+const backCornice = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.12, 0.15), goldMat);
+backCornice.position.set(0, roomH - 0.06, roomZ - roomD / 2 + 0.07);
+scene.add(backCornice);
+
+// 뒷벽 필라스터
+[-roomW/2 + 0.5, -roomW/2 + 4.8, roomW/2 - 4.8, roomW/2 - 0.5].forEach(px => {
+  const pil = new THREE.Mesh(new THREE.BoxGeometry(0.25, roomH - 0.5, 0.12), creamMat);
+  pil.position.set(px, roomH / 2, roomZ - roomD / 2 + 0.06);
+  scene.add(pil);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.2), goldMat);
+  cap.position.set(px, roomH - 0.38, roomZ - roomD / 2 + 0.06);
+  scene.add(cap);
+  const pBase = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.15, 0.18), creamMat);
+  pBase.position.set(px, 0.075, roomZ - roomD / 2 + 0.06);
+  scene.add(pBase);
+});
+
+// ── 앞벽 (입구 쪽 — 아치형 개구부)
+const frontWallL = new THREE.Mesh(new THREE.PlaneGeometry(roomW/2 - 2, roomH), wallBaseMat);
+frontWallL.rotation.y = Math.PI;
+frontWallL.position.set(-roomW/4 - 1, roomH/2, roomZ + roomD/2);
+scene.add(frontWallL);
+const frontWallR = new THREE.Mesh(new THREE.PlaneGeometry(roomW/2 - 2, roomH), wallBaseMat);
+frontWallR.rotation.y = Math.PI;
+frontWallR.position.set(roomW/4 + 1, roomH/2, roomZ + roomD/2);
+scene.add(frontWallR);
+// 입구 상단 아치
+const archTop = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.5), wallBaseMat);
+archTop.rotation.y = Math.PI;
+archTop.position.set(0, roomH - 0.75, roomZ + roomD/2);
+scene.add(archTop);
+// 입구 아치 골드 테두리
+const archFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, roomH, 0.08), goldMat);
+archFrame.position.set(-2, roomH/2, roomZ + roomD/2 - 0.02);
+scene.add(archFrame);
+const archFrame2 = archFrame.clone();
+archFrame2.position.x = 2;
+scene.add(archFrame2);
+const archFrameTop = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.1, 0.08), goldMat);
+archFrameTop.position.set(0, roomH - 1.5, roomZ + roomD/2 - 0.02);
+scene.add(archFrameTop);
+
+// ── 천장: 화려한 장식 천장
+const ceilBaseMat = new THREE.MeshStandardMaterial({ color: 0xf5edd6, roughness: 0.7, metalness: 0.02 });
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), ceilBaseMat);
+ceil.rotation.x = Math.PI / 2;
+ceil.position.set(0, roomH, roomZ);
+scene.add(ceil);
+
+// 천장 볼트 아치 효과 (중앙이 약간 올라간 느낌)
+const vaultGeo = new THREE.PlaneGeometry(roomW * 0.7, roomD * 0.8);
+const vaultMat = new THREE.MeshStandardMaterial({ color: 0xeee4cc, roughness: 0.6, metalness: 0.03 });
+const vault = new THREE.Mesh(vaultGeo, vaultMat);
+vault.rotation.x = Math.PI / 2;
+vault.position.set(0, roomH - 0.02, roomZ);
+scene.add(vault);
+
+// 천장 큰 프레임들 (그림 패널 느낌)
+const ceilPanelPositions = [
+  [0, roomZ + 3], [0, roomZ], [0, roomZ - 3], [0, roomZ - 6]
+];
+ceilPanelPositions.forEach(([cx, cz]) => {
+  // 어두운 패널 (그림 공간)
+  const cp = new THREE.Mesh(
+    new THREE.PlaneGeometry(4.5, 2.5),
+    new THREE.MeshStandardMaterial({ color: 0x2a2418, roughness: 0.5, metalness: 0.05 })
+  );
+  cp.rotation.x = Math.PI / 2;
+  cp.position.set(cx, roomH - 0.03, cz);
+  scene.add(cp);
+
+  // 골드 프레임
+  const cpfW = 4.7, cpfH = 2.7, cpfT = 0.08;
+  [[cpfW, cpfT, 0, cpfH/2], [cpfW, cpfT, 0, -cpfH/2],
+   [cpfT, cpfH, -cpfW/2, 0], [cpfT, cpfH, cpfW/2, 0]].forEach(([w,h,ox,oz]) => {
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, h), goldMat);
+    fr.position.set(cx + ox, roomH - 0.02, cz + oz);
+    scene.add(fr);
+  });
+
+  // 프레임 코너 로제트 (꽃 장식)
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dz]) => {
+    const rosette = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.08, 0.08, 0.03, 16),
+      goldLightMat
+    );
+    rosette.position.set(cx + dx * cpfW/2, roomH - 0.015, cz + dz * cpfH/2);
+    scene.add(rosette);
+  });
+});
+
+// 천장 사이드 패널
+[-1, 1].forEach(side => {
+  for (let i = 0; i < 6; i++) {
+    const sz = roomZ - roomD/2 + 1.5 + i * 3;
+    const sp = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.5, 2),
+      new THREE.MeshStandardMaterial({ color: 0x352e20, roughness: 0.5, metalness: 0.05 })
+    );
+    sp.rotation.x = Math.PI / 2;
+    sp.position.set(side * 5.5, roomH - 0.03, sz);
+    scene.add(sp);
+
+    // 골드 프레임
+    const spfW = 2.7, spfH = 2.2, spfT = 0.06;
+    [[spfW, spfT, 0, spfH/2], [spfW, spfT, 0, -spfH/2],
+     [spfT, spfH, -spfW/2, 0], [spfT, spfH, spfW/2, 0]].forEach(([w,h,ox,oz]) => {
+      const fr = new THREE.Mesh(new THREE.BoxGeometry(w, 0.03, h), goldDarkMat);
+      fr.position.set(side * 5.5 + ox, roomH - 0.02, sz + oz);
+      scene.add(fr);
+    });
+  }
+});
+
+// 천장 골드 리브 (아치 뼈대)
+for (let i = 0; i <= 6; i++) {
+  const rz = roomZ - roomD/2 + i * (roomD / 6);
+  const rib = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.05, 0.1), goldMat);
+  rib.position.set(0, roomH - 0.025, rz);
+  scene.add(rib);
+}
+// 세로 리브
+[-3.5, 0, 3.5].forEach(rx => {
+  const rib = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, roomD), goldMat);
+  rib.position.set(rx, roomH - 0.025, roomZ);
+  scene.add(rib);
+});
+
+// ── 천장 조명 기구 (샹들리에 느낌)
+ceilPositions.forEach(pos => {
+  // 큰 원형 베이스
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.6, 0.6, 0.05, 32),
+    goldMat
+  );
+  base.position.set(pos[0], roomH - 0.03, pos[2]);
+  scene.add(base);
+
+  // 장식 링 2중
+  [0.55, 0.45].forEach(r => {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(r, 0.02, 8, 32),
+      goldLightMat
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(pos[0], roomH - 0.06, pos[2]);
+    scene.add(ring);
+  });
+
+  // 체인 + 등 (간단한 샹들리에)
+  const chain = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, 0.8, 8),
+    goldDarkMat
+  );
+  chain.position.set(pos[0], roomH - 0.45, pos[2]);
+  scene.add(chain);
+
+  // 등불 구체
+  const lamp = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xfff5dd, emissive: 0xffd88a, emissiveIntensity: 0.8, roughness: 0.3, transparent: true, opacity: 0.85 })
+  );
+  lamp.position.set(pos[0], roomH - 0.9, pos[2]);
+  scene.add(lamp);
+});
+
+// ── 벽 상단 수평 몰딩 (양쪽 벽 코니스 연결)
+const frontCornice = new THREE.Mesh(new THREE.BoxGeometry(roomW, 0.12, 0.15), goldMat);
+frontCornice.position.set(0, roomH - 0.06, roomZ + roomD / 2 - 0.07);
+scene.add(frontCornice);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Dummy Mannequin (더미 마네킹)
@@ -444,86 +847,7 @@ dummyToggle.addEventListener('click', () => {
   }
 });
 
-// 좌우 벽
-const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), wallMat);
-leftWall.rotation.y = Math.PI / 2;
-leftWall.position.set(-roomW / 2, roomH / 2, roomZ);
-scene.add(leftWall);
-
-const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(roomD, roomH), wallMat);
-rightWall.rotation.y = -Math.PI / 2;
-rightWall.position.set(roomW / 2, roomH / 2, roomZ);
-scene.add(rightWall);
-
-// 천장
-const ceilMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.95 });
-const ceil = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), ceilMat);
-ceil.rotation.x = Math.PI / 2;
-ceil.position.set(0, roomH, roomZ);
-scene.add(ceil);
-
-// ── 골드 몰딩 (바닥 + 천장 라인)
-const moldMat = new THREE.MeshStandardMaterial({ color: 0x9a7d4a, roughness: 0.25, metalness: 0.8 });
-
-// 바닥 몰딩
-[
-  [roomW, 0.06, 0.06, 0, 0.03, roomZ - roomD/2 + 0.03, 0],
-  [0.06, 0.06, roomD, -roomW/2 + 0.03, 0.03, roomZ, 0],
-  [0.06, 0.06, roomD, roomW/2 - 0.03, 0.03, roomZ, 0],
-].forEach(([w,h,d, x,y,z]) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), moldMat);
-  m.position.set(x,y,z);
-  scene.add(m);
-});
-
-// 천장 몰딩
-[
-  [roomW, 0.04, 0.04, 0, roomH - 0.02, roomZ - roomD/2 + 0.02, 0],
-  [0.04, 0.04, roomD, -roomW/2 + 0.02, roomH - 0.02, roomZ, 0],
-  [0.04, 0.04, roomD, roomW/2 - 0.02, roomH - 0.02, roomZ, 0],
-].forEach(([w,h,d, x,y,z]) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), moldMat);
-  m.position.set(x,y,z);
-  scene.add(m);
-});
-
-// ── 천장 조명 기구 (장식)
-ceilPositions.forEach(pos => {
-  // 원형 베이스
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.4, 0.4, 0.03, 32),
-    moldMat
-  );
-  base.position.set(pos[0], roomH - 0.02, pos[2]);
-  scene.add(base);
-
-  // 링
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(0.35, 0.015, 8, 32),
-    moldMat
-  );
-  ring.rotation.x = Math.PI / 2;
-  ring.position.set(pos[0], roomH - 0.04, pos[2]);
-  scene.add(ring);
-});
-
-// ── 바닥 센터 장식 러그/패턴
-const rugMat = new THREE.MeshStandardMaterial({ color: 0x0f0e0a, roughness: 0.4, metalness: 0.05 });
-const rug = new THREE.Mesh(new THREE.PlaneGeometry(8, 12), rugMat);
-rug.rotation.x = -Math.PI / 2;
-rug.position.set(0, 0.003, -6 + 3);
-scene.add(rug);
-
-// 러그 골드 테두리
-const rugBorderMat = new THREE.MeshStandardMaterial({ color: 0x6a5530, roughness: 0.4, metalness: 0.6 });
-[
-  [8.1, 0.003, 0.04, 0, 0.004, -6+3-6],
-  [8.1, 0.003, 0.04, 0, 0.004, -6+3+6],
-  [0.04, 0.003, 12.1, -4.05, 0.004, -6+3],
-  [0.04, 0.003, 12.1, 4.05, 0.004, -6+3],
-].forEach(([w,h,d,x,y,z]) => {
-  scene.add(new THREE.Mesh(new THREE.BoxGeometry(w,h,d), rugBorderMat).translateX(x).translateY(y).translateZ(z));
-});
+// (좌우 벽, 천장, 몰딩, 러그 → 위 buildWall 및 천장 섹션에서 이미 처리됨)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Pedestals — 크고 고급스럽게
@@ -531,9 +855,9 @@ const rugBorderMat = new THREE.MeshStandardMaterial({ color: 0x6a5530, roughness
 const pedH = 1.15;
 const pedR = 0.5;  // 받침대 반지름 키움
 
-const pedBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1916, roughness: 0.3, metalness: 0.15 });
-const pedTopMat = new THREE.MeshStandardMaterial({ color: 0x1c1b18, roughness: 0.1, metalness: 0.25 });
-const pedGoldMat = new THREE.MeshStandardMaterial({ color: 0x9a7d4a, roughness: 0.2, metalness: 0.85 });
+const pedBodyMat = new THREE.MeshStandardMaterial({ color: 0xf0e8d5, roughness: 0.3, metalness: 0.05 });
+const pedTopMat = new THREE.MeshStandardMaterial({ color: 0xeee4cc, roughness: 0.15, metalness: 0.08 });
+const pedGoldMat = new THREE.MeshStandardMaterial({ color: 0xc9a84c, roughness: 0.2, metalness: 0.85 });
 
 artifacts.forEach(art => {
   const g = new THREE.Group();
@@ -594,7 +918,7 @@ artifacts.forEach(art => {
 
   // 네임 플레이트 (앞면)
   const plateGeo = new THREE.BoxGeometry(0.8, 0.12, 0.02);
-  const plateMat = new THREE.MeshStandardMaterial({ color: 0x0e0d0a, roughness: 0.3, metalness: 0.2 });
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0x1a1610, roughness: 0.3, metalness: 0.2 });
   const plate = new THREE.Mesh(plateGeo, plateMat);
   plate.position.set(0, pedH * 0.3, pedR * 0.92);
   g.add(plate);
